@@ -13,8 +13,8 @@ class Settings:
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
 
-    # Database — Supabase PostgreSQL Source of Truth
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:KiranaOS_Secure_Pass_2026!@db.tbaliltgyaqgffrgmtpq.supabase.co:5432/postgres")
+    # Database — Supabase PostgreSQL Source of Truth (IPv4 Pooler for cloud platform compatibility)
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres.tbaliltgyaqgffrgmtpq:KiranaOS_Secure_Pass_2026!@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres")
     
     # AI Models
     HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")
