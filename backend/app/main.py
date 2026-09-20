@@ -48,9 +48,14 @@ def get_system_status():
         "embedding_model": settings.EMBEDDING_MODEL,
         "reranker_model": settings.RERANKER_MODEL,
         "whatsapp_integration": "active",
+        "supabase": "connected" if settings.SUPABASE_URL else "unconfigured",
         "server_time": datetime.datetime.utcnow().isoformat()
     }
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "timestamp": datetime.datetime.utcnow().isoformat()}
+    return {
+        "status": "healthy",
+        "supabase": "connected" if settings.SUPABASE_URL else "unconfigured",
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    }

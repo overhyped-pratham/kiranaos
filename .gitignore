@@ -45,3 +45,5 @@ Thumbs.db
 # Antigravity Scratch & Logs
 scratch/
 .system_generated/
+supabase/.temp/
+
