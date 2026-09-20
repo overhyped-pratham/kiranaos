@@ -1,0 +1,66 @@
+services:
+  # ---------------------------------------------------------------------------
+  # 1. FastAPI Backend Web Service
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: kiranaos-backend
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install --upgrade pip && pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        value: https://tbaliltgyaqgffrgmtpq.supabase.co
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_lJEexuTcTHWcgmoEA5gNpw_N41M4Slh
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: LLM_PROVIDER
+        value: auto
+      - key: EMBEDDING_MODEL
+        value: BAAI/bge-m3
+      - key: RERANKER_MODEL
+        value: BAAI/bge-reranker-v2-m3
+      - key: N8N_WEBHOOK_URL
+        value: https://webhook.site/placeholder-order
+      - key: N8N_ALERT_WEBHOOK_URL
+        value: https://webhook.site/placeholder-low-stock
+      - key: MERCHANT_PHONE
+        value: "+919876543210"
+      - key: WHATSAPP_VERIFY_TOKEN
+        value: kiranaos_secret_token_2026
+
+  # ---------------------------------------------------------------------------
+  # 2. React + Vite Frontend Static Site
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: kiranaos-frontend
+    runtime: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: kiranaos-backend
+          property: host
+      - key: VITE_SUPABASE_URL
+        value: https://tbaliltgyaqgffrgmtpq.supabase.co
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_lJEexuTcTHWcgmoEA5gNpw_N41M4Slh

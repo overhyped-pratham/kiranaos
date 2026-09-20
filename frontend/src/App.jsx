@@ -175,7 +175,7 @@ export default function App() {
               </strong>
             </div>
             <span>•</span>
-            <span>FastAPI: <strong className="text-emerald-400">Connected (:8000)</strong></span>
+            <span>API: <strong className={statusInfo ? "text-emerald-400" : "text-amber-400"}>{statusInfo ? "Connected" : "Connecting..."}</strong></span>
             <span>•</span>
             <button
               onClick={loadData}
