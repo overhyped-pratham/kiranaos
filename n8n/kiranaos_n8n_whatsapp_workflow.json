@@ -1,0 +1,273 @@
+{
+  "name": "KiranaOS - WhatsApp Autonomous Store Operator Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kiranaos-whatsapp-webhook",
+        "options": {}
+      },
+      "id": "node-whatsapp-trigger",
+      "name": "WhatsApp Trigger Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "kiranaos-whatsapp-trigger"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalize incoming WhatsApp Cloud API or direct payload\nconst body = items[0].json.body || items[0].json;\n\nlet message_text = '';\nlet from_number = '+919876543210';\nlet message_id = 'msg_' + Date.now();\n\nif (body.entry && body.entry[0] && body.entry[0].changes && body.entry[0].changes[0].value.messages) {\n  const msg = body.entry[0].changes[0].value.messages[0];\n  message_id = msg.id;\n  from_number = '+' + msg.from.replace('+', '');\n  if (msg.type === 'text') {\n    message_text = msg.text.body;\n  }\n} else if (body.message) {\n  message_text = body.message;\n  from_number = body.phone || body.from || from_number;\n  message_id = body.message_id || message_id;\n}\n\nreturn [{\n  json: {\n    message: message_text,\n    phone: from_number,\n    idempotency_key: message_id,\n    request_id: 'wa_' + message_id\n  }\n}];"
+      },
+      "id": "node-normalize",
+      "name": "Normalize Incoming Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/agent/run",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ JSON.stringify($json) }}"
+      },
+      "id": "node-call-kiranaos",
+      "name": "POST KiranaOS /agent/run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "value2": "confirmed"
+            }
+          ]
+        }
+      },
+      "id": "node-check-confirmed",
+      "name": "Is Order Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        860,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $env.WHATSAPP_PHONE_NUMBER_ID || '1029384756' }}",
+        "recipientPhoneNumber": "={{ $node['Normalize Incoming Message'].json.phone }}",
+        "textBody": "={{ $json.message }}"
+      },
+      "id": "node-send-whatsapp-confirmation",
+      "name": "Send WhatsApp Order Confirmation",
+      "type": "n8n-nodes-base.whatsapp",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "value2": "pending_approval"
+            }
+          ]
+        }
+      },
+      "id": "node-check-approval",
+      "name": "Needs Merchant Approval?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $env.WHATSAPP_PHONE_NUMBER_ID || '1029384756' }}",
+        "recipientPhoneNumber": "={{ $env.MERCHANT_PHONE || '+919876543210' }}",
+        "textBody": "={{ '⚠️ *MERCHANT APPROVAL REQUIRED*\\nOrder: ' + $json.order.id + '\\nTotal: ₹' + $json.order.total + '\\nReason: ' + ($json.order.approval_reason || 'High Quantity/Value') + '\\nReply APPROVE ' + $json.order.id + ' or REJECT ' + $json.order.id }}"
+      },
+      "id": "node-alert-merchant-approval",
+      "name": "Send Merchant Approval Alert",
+      "type": "n8n-nodes-base.whatsapp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $env.WHATSAPP_PHONE_NUMBER_ID || '1029384756' }}",
+        "recipientPhoneNumber": "={{ $node['Normalize Incoming Message'].json.phone }}",
+        "textBody": "={{ $json.message }}"
+      },
+      "id": "node-send-clarification",
+      "name": "Send Clarification / Options",
+      "type": "n8n-nodes-base.whatsapp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ ($json.low_stock_events && $json.low_stock_events.length) || 0 }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "node-check-low-stock",
+      "name": "Any Low Stock Events?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $env.WHATSAPP_PHONE_NUMBER_ID || '1029384756' }}",
+        "recipientPhoneNumber": "={{ $env.MERCHANT_PHONE || '+919876543210' }}",
+        "textBody": "={{ '📢 *LOW STOCK ALERT*\\n' + $json.low_stock_events.map(e => '• ' + e.product_name + ' is down to ' + e.stock + ' units (Threshold: ' + e.threshold + ')').join('\\n') + '\\nPlease restock soon!' }}"
+      },
+      "id": "node-alert-low-stock",
+      "name": "Send Merchant Low Stock Alert",
+      "type": "n8n-nodes-base.whatsapp",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Incoming Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Incoming Message": {
+      "main": [
+        [
+          {
+            "node": "POST KiranaOS /agent/run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST KiranaOS /agent/run": {
+      "main": [
+        [
+          {
+            "node": "Is Order Confirmed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Order Confirmed?": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Order Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Needs Merchant Approval?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Order Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Any Low Stock Events?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Low Stock Events?": {
+      "main": [
+        [
+          {
+            "node": "Send Merchant Low Stock Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Merchant Approval?": {
+      "main": [
+        [
+          {
+            "node": "Send Merchant Approval Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Clarification / Options",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
