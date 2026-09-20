@@ -38,6 +38,8 @@ services:
         value: "+919876543210"
       - key: WHATSAPP_VERIFY_TOKEN
         value: kiranaos_secret_token_2026
+      - key: FRONTEND_URL
+        sync: false
 
   # ---------------------------------------------------------------------------
   # 2. React + Vite Frontend Static Site
@@ -54,6 +56,11 @@ services:
         source: /*
         destination: /index.html
     envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: kiranaos-backend
+          property: host
       - key: VITE_API_URL
         fromService:
           type: web

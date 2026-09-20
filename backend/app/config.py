@@ -37,10 +37,14 @@ class Settings:
     WHATSAPP_PHONE_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
     MERCHANT_PHONE: str = os.getenv("MERCHANT_PHONE", "+919876543210")
 
+    # Frontend & CORS
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "")
+
     # Supabase Integration
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_PUBLISHABLE_KEY: str = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
-    SUPABASE_SECRET_KEY: str = os.getenv("SUPABASE_SECRET_KEY", "")
+    SUPABASE_SECRET_KEY: str = os.getenv("SUPABASE_SECRET_KEY", "") or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.getenv("SUPABASE_SECRET_KEY", "")
     SUPABASE_JWKS_URL: str = os.getenv("SUPABASE_JWKS_URL", "")
 
     # Business Rules
