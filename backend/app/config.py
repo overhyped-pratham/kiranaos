@@ -37,6 +37,12 @@ class Settings:
     WHATSAPP_PHONE_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
     MERCHANT_PHONE: str = os.getenv("MERCHANT_PHONE", "+919876543210")
 
+    # Supabase Integration
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_PUBLISHABLE_KEY: str = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
+    SUPABASE_SECRET_KEY: str = os.getenv("SUPABASE_SECRET_KEY", "")
+    SUPABASE_JWKS_URL: str = os.getenv("SUPABASE_JWKS_URL", "")
+
     # Business Rules
     DEFAULT_DELIVERY_CHARGE: float = 20.0
     FREE_DELIVERY_THRESHOLD: float = 500.0
