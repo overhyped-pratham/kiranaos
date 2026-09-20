@@ -34,6 +34,7 @@ export const api = {
 
   // Inventory
   getInventory: () => fetchJson('/inventory'),
+  getProducts: () => fetchJson('/inventory'),
   getProduct: (id) => fetchJson(`/inventory/product/${id}`),
   updateProduct: (id, updates) => fetchJson(`/inventory/product/${id}`, {
     method: 'PATCH',

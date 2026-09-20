@@ -24,6 +24,7 @@ env/
 *.db-journal
 *.sqlite
 *.sqlite3
+*.archived_offline
 
 # Node / Frontend
 node_modules/

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Play, CheckCircle2, XCircle, Clock, ShieldCheck, Flame, Cpu, ArrowRight, Database, Activity, Check, AlertTriangle, Layers, Zap } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function JudgeSuite({ onRefreshAll }) {
+export default function JudgeSuite({ onRefreshAll, realtimeEvents = [] }) {
   const [isRunningAll, setIsRunningAll] = useState(false);
   const [scenarioResults, setScenarioResults] = useState({});
   const [activeLog, setActiveLog] = useState(null);
@@ -529,6 +529,44 @@ export default function JudgeSuite({ onRefreshAll }) {
               <p className="text-[11px] text-slate-400 mt-0.5">Detects commodity queries ("aata") and prompts 5kg vs 10kg instead of silent resolution.</p>
             </div>
           </div>
+        </div>
+
+        {/* Supabase Realtime WebSocket Event Stream Inspector */}
+        <div className="mt-6 pt-6 border-t border-slate-800/80">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Zap className="w-4 h-4 text-emerald-400" />
+              <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                Live Supabase Realtime Event Stream ({realtimeEvents.length} Events Logged)
+              </h4>
+            </div>
+            <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              postgres_changes (WebSockets)
+            </span>
+          </div>
+
+          {realtimeEvents.length === 0 ? (
+            <div className="p-4 rounded-xl bg-slate-900/40 border border-dashed border-slate-800 text-center text-xs text-slate-500">
+              Listening for live PostgreSQL changes on <code>products</code>, <code>orders</code>, <code>agent_runs</code>, <code>delivery_requests</code>...
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {realtimeEvents.map((evt, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800/60 text-xs font-mono">
+                  <div className="flex items-center space-x-2 truncate mr-2">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300">
+                      {evt.table}
+                    </span>
+                    <span className="text-amber-400 text-[10px] font-bold">{evt.eventType}</span>
+                    <span className="text-slate-300 truncate text-[11px]">
+                      {JSON.stringify(evt.record).slice(0, 90)}...
+                    </span>
+                  </div>
+                  <span className="text-slate-500 text-[10px] shrink-0">{evt.timestamp}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

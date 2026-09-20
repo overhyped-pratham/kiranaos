@@ -7,7 +7,8 @@ import OrdersView from './components/OrdersView';
 import ApprovalsView from './components/ApprovalsView';
 import JudgeSuite from './components/JudgeSuite';
 import { api } from './services/api';
-import { ShoppingBag, AlertTriangle, TrendingUp, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
+import { subscribeToRealtimeChanges } from './services/supabase';
+import { ShoppingBag, AlertTriangle, TrendingUp, Clock, CheckCircle2, RefreshCw, Zap } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -17,6 +18,8 @@ export default function App() {
   const [latestRun, setLatestRun] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusInfo, setStatusInfo] = useState(null);
+  const [realtimeEvents, setRealtimeEvents] = useState([]);
+  const [realtimeStatus, setRealtimeStatus] = useState('connecting');
 
   const loadData = async () => {
     try {
@@ -36,9 +39,70 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Initial data hydration
     loadData();
-    const interval = setInterval(loadData, 5000);
-    return () => clearInterval(interval);
+
+    // Supabase Realtime WebSockets: instant PostgreSQL state propagation without page refresh
+    const unsubscribe = subscribeToRealtimeChanges({
+      onProductChange: (payload) => {
+        console.log('[Supabase Realtime] Product event received:', payload);
+        if (payload.eventType === 'UPDATE' && payload.new) {
+          setProducts((prev) =>
+            prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
+          );
+        } else if (payload.eventType === 'INSERT' && payload.new) {
+          setProducts((prev) => [payload.new, ...prev]);
+        } else if (payload.eventType === 'DELETE' && payload.old) {
+          setProducts((prev) => prev.filter((p) => p.id !== payload.old.id));
+        }
+      },
+      onOrderChange: (payload) => {
+        console.log('[Supabase Realtime] Order event received:', payload);
+        if (payload.eventType === 'INSERT' && payload.new) {
+          setOrders((prev) => [payload.new, ...prev]);
+          if (payload.new.status === 'pending_approval') {
+            setPendingOrders((prev) => [payload.new, ...prev]);
+          }
+        } else if (payload.eventType === 'UPDATE' && payload.new) {
+          setOrders((prev) =>
+            prev.map((o) => (o.id === payload.new.id ? { ...o, ...payload.new } : o))
+          );
+          if (payload.new.status === 'pending_approval') {
+            setPendingOrders((prev) => {
+              const exists = prev.some((o) => o.id === payload.new.id);
+              return exists ? prev.map((o) => (o.id === payload.new.id ? payload.new : o)) : [payload.new, ...prev];
+            });
+          } else {
+            setPendingOrders((prev) => prev.filter((o) => o.id !== payload.new.id));
+          }
+        }
+      },
+      onAgentRunChange: (payload) => {
+        console.log('[Supabase Realtime] Agent run event received:', payload);
+        if (payload.new) {
+          setLatestRun(payload.new);
+        }
+      },
+      onLowStockChange: (payload) => {
+        console.log('[Supabase Realtime] Low stock event received:', payload);
+      },
+      onDeliveryChange: (payload) => {
+        console.log('[Supabase Realtime] Delivery request event received:', payload);
+      },
+      onEventLog: (event) => {
+        setRealtimeStatus('active');
+        setRealtimeEvents((prev) => [event, ...prev].slice(0, 30));
+      }
+    });
+
+    setRealtimeStatus('connected');
+
+    // Heartbeat fallback sync every 30s (non-intrusive)
+    const interval = setInterval(loadData, 30000);
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   const handleRunAgent = async (payload) => {
@@ -102,7 +166,15 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+          <div className="flex items-center space-x-3 text-[11px] text-slate-400">
+            <div className="flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700/60">
+              <Zap className={`w-3 h-3 ${realtimeStatus === 'active' || realtimeStatus === 'connected' ? 'text-emerald-400 fill-emerald-400 animate-pulse' : 'text-amber-400'}`} />
+              <span className="text-slate-300 font-medium">Supabase Realtime:</span>
+              <strong className={realtimeStatus === 'active' || realtimeStatus === 'connected' ? 'text-emerald-400' : 'text-amber-400'}>
+                {realtimeStatus === 'active' ? 'LIVE (Streaming)' : realtimeStatus === 'connected' ? 'Connected' : 'Connecting...'}
+              </strong>
+            </div>
+            <span>•</span>
             <span>FastAPI: <strong className="text-emerald-400">Connected (:8000)</strong></span>
             <span>•</span>
             <button
@@ -115,6 +187,21 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Realtime Live Event Ticker (when events arrive) */}
+      {realtimeEvents.length > 0 && (
+        <div className="bg-emerald-950/40 border-b border-emerald-900/40 px-4 py-1 text-[11px] text-emerald-300 flex items-center space-x-3 overflow-x-auto">
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 uppercase tracking-wider">
+            Realtime Event
+          </span>
+          <span className="font-mono text-slate-400">{realtimeEvents[0].timestamp}</span>
+          <span className="text-slate-200">Table: <strong className="text-emerald-400">{realtimeEvents[0].table}</strong></span>
+          <span className="text-slate-400">({realtimeEvents[0].eventType})</span>
+          <span className="text-slate-400 truncate max-w-xl">
+            {JSON.stringify(realtimeEvents[0].record)}
+          </span>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
@@ -160,7 +247,7 @@ export default function App() {
         )}
 
         {activeTab === 'judge' && (
-          <JudgeSuite onRefreshAll={loadData} />
+          <JudgeSuite onRefreshAll={loadData} realtimeEvents={realtimeEvents} />
         )}
       </main>
 

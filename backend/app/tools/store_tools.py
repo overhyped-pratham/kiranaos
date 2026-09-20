@@ -334,6 +334,23 @@ def create_order(
             if db.query(Order.id).filter(Order.id == candidate_id).first():
                 continue
 
+            # PostgreSQL Foreign Key Invariant: Ensure customer exists in database
+            cust = db.query(Customer).filter(Customer.id == customer_id).first()
+            if not cust:
+                import uuid
+                cust_phone = customer_id if customer_id.startswith("+") else f"+9198{abs(hash(customer_id)) % 100000000:08d}"
+                if db.query(Customer).filter(Customer.phone == cust_phone).first():
+                    cust_phone = f"+91{uuid.uuid4().int % 10000000000:010d}"
+                cust = Customer(
+                    id=customer_id,
+                    phone=cust_phone,
+                    name="Walk-in Customer",
+                    default_address=delivery_address or "Local Delivery",
+                    preferences={}
+                )
+                db.add(cust)
+                db.flush()
+
             order_id = candidate_id
             new_order = Order(
                 id=order_id,

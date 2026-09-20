@@ -38,7 +38,23 @@ def parse_request_node(state: AgentState) -> AgentState:
             if not state["delivery_address"]:
                 state["delivery_address"] = cust["default_address"]
         else:
-            state["customer_id"] = f"cust_{state['customer_phone'].replace('+', '')}"
+            cust_id = f"cust_{state['customer_phone'].replace('+', '')}"
+            from backend.app.models import Customer
+            existing_cust = db.query(Customer).filter(Customer.id == cust_id).first()
+            if not existing_cust:
+                new_cust = Customer(
+                    id=cust_id,
+                    phone=state["customer_phone"],
+                    name="Walk-in Customer",
+                    default_address=state.get("delivery_address") or "Local Delivery",
+                    preferences={}
+                )
+                db.add(new_cust)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+            state["customer_id"] = cust_id
             state["customer_name"] = "Walk-in Customer"
 
         # 2. Idempotency Check

@@ -13,8 +13,8 @@ class Settings:
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
 
-    # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./kiranaos.db")
+    # Database — Supabase PostgreSQL Source of Truth
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:KiranaOS_Secure_Pass_2026!@db.tbaliltgyaqgffrgmtpq.supabase.co:5432/postgres")
     
     # AI Models
     HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")

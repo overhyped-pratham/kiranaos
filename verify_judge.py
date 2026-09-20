@@ -14,7 +14,9 @@ if str(root_dir) not in sys.path:
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-from backend.app.database import SessionLocal
+from backend.app.database import SessionLocal, engine
+
+print(f"\n[AUDIT] DATABASE SOURCE OF TRUTH: {engine.url.host} ({engine.dialect.name.upper()})")
 from backend.app.models import Product, Order, OrderItem, InventoryLog, LowStockEvent, DeliveryRequest
 from backend.app.agent.graph import run_agent_workflow
 from backend.app.tools import store_tools
